@@ -7,17 +7,34 @@ import { useWindowVirtualizer } from '@tanstack/react-virtual'
 
 function Example() {
   const listRef = React.useRef<HTMLDivElement | null>(null)
+  const [onLoadMoreCalledNTimes, setOnLoadMoreCalledNTimes] = React.useState(0)
+  const [nItems, setNItems] = React.useState(1)
+  const [isListHidden, setIsListHidden] = React.useState(false)
 
   const virtualizer = useWindowVirtualizer({
-    count: 10000,
-    estimateSize: () => 35,
+    count: nItems,
+    estimateSize: () => 20,
     overscan: 5,
     scrollMargin: listRef.current?.offsetTop ?? 0,
   })
 
+  const onLoadMore = () => {
+    setNItems(n => n + 10)
+    setOnLoadMoreCalledNTimes(n => n + 1)
+  }
+
+  const virtualItems = virtualizer.getVirtualItems()
+
+  React.useEffect(() => {
+    const lastItem = virtualItems[virtualItems.length - 1]
+    if (lastItem && lastItem.index >= nItems - 2) {
+      onLoadMore()
+    }
+  }, [virtualItems])
+
   return (
     <>
-      <div ref={listRef} className="List">
+      <div ref={listRef} className="List" style={isListHidden ? { display: 'none' } : undefined}>
         <div
           style={{
             height: `${virtualizer.getTotalSize()}px`,
@@ -28,6 +45,8 @@ function Example() {
           {virtualizer.getVirtualItems().map((item) => (
             <div
               key={item.key}
+              ref={virtualizer.measureElement}
+              data-index={item.index}
               className={item.index % 2 ? 'ListItemOdd' : 'ListItemEven'}
               style={{
                 position: 'absolute',
@@ -45,6 +64,12 @@ function Example() {
           ))}
         </div>
       </div>
+      <div className='info-container'>
+        <p>Virtual items: {virtualItems.length}</p>
+        <p>Items in memory: {nItems}</p>
+        <p>onLoadMoreCalled: {onLoadMoreCalledNTimes} times</p>
+        <button style={{ marginTop: '1rem' }} onClick={() => setIsListHidden(h => !h)}>{isListHidden ? 'Show' : 'Hide'} list</button>
+      </div>
     </>
   )
 }
@@ -52,25 +77,7 @@ function Example() {
 function App() {
   return (
     <div>
-      <p>
-        In many cases, when implementing a virtualizer with a window as the
-        scrolling element, developers often find the need to specify a
-        "scrollMargin." The scroll margin is a crucial setting that defines the
-        space or gap between the start of the page and the edges of the list.
-      </p>
-      <br />
-      <br />
-      <h3>Window scroller</h3>
       <Example />
-      <br />
-      <br />
-      {process.env.NODE_ENV === 'development' ? (
-        <p>
-          <strong>Notice:</strong> You are currently running React in
-          development mode. Rendering performance will be slightly degraded
-          until this application is build for production.
-        </p>
-      ) : null}
     </div>
   )
 }
